@@ -1,6 +1,6 @@
 import requests
 
-API_KEY = '438f9c00-7273-416d-a22c-f01c02f682ae'
+API_KEY = 'fb1d2968-115d-404f-bf05-1d41a22940bb'
 
 # Endpoint for sending segmentation events.
 EVENTS_ENDPOINT_URL = (

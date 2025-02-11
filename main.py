@@ -3,6 +3,7 @@ from csv_processing import read_csv
 from api_clients import send_events, send_identity, get_all_cohorts
 
 def transform_event(event):
+
     return {
         "name": event.get("name"),
         "time": event.get("time"),  # Must be in ISO 8601 format
