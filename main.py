@@ -3,16 +3,74 @@ from csv_processing import read_csv
 from api_clients import send_events, send_identity, get_all_cohorts
 
 def transform_event(event):
-
-    return {
-        "name": event.get("name"),
-        "time": event.get("time"),  # Must be in ISO 8601 format
-        "view_id": event.get("view_id"),
-        "session_id": event.get("session_id"),
-        "properties": {
-            "title": event.get("title")
-        }
+    """
+    Transforms a CSV event row into the structure expected by the API.
+    
+    Expected CSV headers for events:
+      id, name, user_id, session_id, view_id, time, articleType, domain, referrer,
+      title, type, url, user_agent, city, continent, country, postal_code, province,
+      autonomous_system_number, autonomous_system_organization, isp, organization,
+      contentTags, segments, cohorts
+    
+    The resulting JSON will have keys in this order:
+      "name",
+      "user_id",
+      "properties": {
+          "articleType",
+          "client": { "domain", "referrer", "title", "type", "url", "user_agent" },
+          "geo_info": { "city", "continent", "country", "postal_code", "province" },
+          "isp_info": { "autonomous_system_number", "autonomous_system_organization", "isp", "organization" },
+          "contentTags": [ ... ]
+      },
+      "session_id",
+      "view_id",
+      "time",
+      "segments": [ ... ],
+      "cohorts": [ ... ],
+      "id"
+    """
+    def split_to_list(value):
+        if value:
+            return [item.strip() for item in value.split(",") if item.strip()]
+        else:
+            return []
+    
+    event_json = {}
+    event_json["name"] = event.get("name")
+    event_json["user_id"] = event.get("user_id")
+    event_json["properties"] = {
+        "articleType": event.get("articleType"),
+        "client": {
+            "domain": event.get("domain"),
+            "referrer": event.get("referrer"),
+            "title": event.get("title"),
+            "type": event.get("type"),
+            "url": event.get("url"),
+            "user_agent": event.get("user_agent")
+        },
+        "geo_info": {
+            "city": event.get("city"),
+            "continent": event.get("continent"),
+            "country": event.get("country"),
+            "postal_code": event.get("postal_code"),
+            "province": event.get("province")
+        },
+        "isp_info": {
+            "autonomous_system_number": int(event.get("autonomous_system_number", 0)) if event.get("autonomous_system_number") else None,
+            "autonomous_system_organization": event.get("autonomous_system_organization"),
+            "isp": event.get("isp"),
+            "organization": event.get("organization")
+        },
+        "contentTags": split_to_list(event.get("contentTags"))
     }
+    event_json["session_id"] = event.get("session_id")
+    event_json["view_id"] = event.get("view_id")
+    event_json["time"] = event.get("time")
+    event_json["segments"] = [int(x) for x in split_to_list(event.get("segments"))] if event.get("segments") else []
+    event_json["cohorts"] = split_to_list(event.get("cohorts"))
+    event_json["id"] = event.get("id")
+    
+    return event_json
 
 def build_event_payload(user_id, events):
     return {
@@ -29,7 +87,7 @@ def transform_identity(identity):
     }
 
 def main():
-    # Determine the directory where main.py is located
+    # Determine the directory where main.py is located.
     script_dir = os.path.dirname(os.path.realpath(__file__))
     
     # Build file paths to the CSV files in the 'csv_data' folder.
@@ -40,15 +98,17 @@ def main():
     raw_events = read_csv(events_file)
     print(f"Processing {len(raw_events)} events from '{events_file}'.")
     
-    # Group events by user_id
+    # Group events by user_id.
     events_by_user = {}
     for event in raw_events:
         user_id = event.get("user_id")
         if user_id:
             transformed_event = transform_event(event)
             events_by_user.setdefault(user_id, []).append(transformed_event)
+        else:
+            print("Warning: Event row missing 'user_id'. Skipping row.")
     
-    # For each user, build the payload and send it to the segmentation endpoint.
+    # For each user, build the payload and send it.
     for user_id, user_events in events_by_user.items():
         payload = build_event_payload(user_id, user_events)
         print(f"Sending events payload for user {user_id}:\n{payload}")
