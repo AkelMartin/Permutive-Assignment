@@ -3,32 +3,7 @@ from csv_processing import read_csv
 from api_clients import send_events, send_identity, get_all_cohorts
 
 def transform_event(event):
-    """
-    Transforms a CSV event row into the structure expected by the API.
     
-    Expected CSV headers for events:
-      id, name, user_id, session_id, view_id, time, articleType, domain, referrer,
-      title, type, url, user_agent, city, continent, country, postal_code, province,
-      autonomous_system_number, autonomous_system_organization, isp, organization,
-      contentTags, segments, cohorts
-    
-    The resulting JSON will have keys in this order:
-      "name",
-      "user_id",
-      "properties": {
-          "articleType",
-          "client": { "domain", "referrer", "title", "type", "url", "user_agent" },
-          "geo_info": { "city", "continent", "country", "postal_code", "province" },
-          "isp_info": { "autonomous_system_number", "autonomous_system_organization", "isp", "organization" },
-          "contentTags": [ ... ]
-      },
-      "session_id",
-      "view_id",
-      "time",
-      "segments": [ ... ],
-      "cohorts": [ ... ],
-      "id"
-    """
     def split_to_list(value):
         if value:
             return [item.strip() for item in value.split(",") if item.strip()]
